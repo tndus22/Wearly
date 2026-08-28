@@ -840,9 +840,12 @@ async function removeProductBackground(
     }
   }
 
-  let foregroundPipeline = sharp(pixels, {
+  const transparentSource = await sharp(pixels, {
     raw: { width: sourceWidth, height: sourceHeight, channels: 4 },
-  });
+  })
+    .png()
+    .toBuffer();
+  let croppedSource = transparentSource;
   if (productSource.crop) {
     const scaleX = sourceWidth / productSource.width;
     const scaleY = sourceHeight / productSource.height;
@@ -866,22 +869,17 @@ async function removeProductBackground(
         sourceHeight,
       ),
     );
-    console.log('PRODUCT_CROP_DEBUG', {
-      sourceWidth,
-      sourceHeight,
-      productSourceWidth: productSource.width,
-      productSourceHeight: productSource.height,
-      sourceCrop: productSource.crop,
-      mapped: { left, top, right, bottom },
-    });
-    foregroundPipeline = foregroundPipeline.extract({
-      left,
-      top,
-      width: right - left,
-      height: bottom - top,
-    });
+    croppedSource = await sharp(transparentSource)
+      .extract({
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+      })
+      .png()
+      .toBuffer();
   }
-  const foreground = await foregroundPipeline
+  const foreground = await sharp(croppedSource)
     .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 2 })
     .png()
     .toBuffer();
@@ -1097,10 +1095,7 @@ export async function POST(request: Request) {
         await createInstantPreview(personImage, products, 'quick', bodyGuide, payload.profile),
       );
     } catch (error) {
-      console.error(
-        'Instant preview failed',
-        error instanceof Error ? error.message : error,
-      );
+      console.error('Instant preview failed', error);
       const normalized = publicError(error);
       return NextResponse.json({ error: normalized.message }, { status: normalized.status });
     }
