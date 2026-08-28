@@ -4,7 +4,7 @@
 
 ### Live Demo
 
-**[Wearly 바로 사용해보기](https://wearly-ai-closet.vercel.app/)**
+👉**[Wearly 바로 사용해보기](https://wearly-ai-closet.vercel.app/)**
 
 ## 포함된 기능
 
