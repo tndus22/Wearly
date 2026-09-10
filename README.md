@@ -80,7 +80,7 @@ npm run build
 
 ## 사용 모델과 라이선스
 
-FASHN VTON 1.5는 Apache 2.0 라이선스입니다. CatVTON 코드·체크포인트·데모는 CC BY-NC-SA 4.0 라이선스이며 비상업적 포트폴리오 용도로만 사용해야 합니다. 출처는 [FASHN VTON 1.5](https://huggingface.co/fashn-ai/fashn-vton-1.5)와 [CatVTON](https://github.com/Zheng-Chong/CatVTON)에서 확인할 수 있습니다.
+FASHN VTON 1.5는 Apache 2.0 라이선스입니다. CatVTON 코드·체크포인트·데모는 CC BY-NC-SA 4.0 라이선스이며 비상업적 용도로만 사용해야 합니다. 출처는 [FASHN VTON 1.5](https://huggingface.co/fashn-ai/fashn-vton-1.5)와 [CatVTON](https://github.com/Zheng-Chong/CatVTON)에서 확인할 수 있습니다.
 
 ## 사용 범위
 
