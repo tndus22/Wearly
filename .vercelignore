@@ -3,5 +3,4 @@ node_modules
 .vinext
 dist
 .wrangler
-.openai
 npm-debug.log*
