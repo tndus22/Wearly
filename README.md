@@ -6,6 +6,20 @@
 
 👉[Wearly 바로 사용해보기](https://wearly-ai-closet.vercel.app/)
 
+## 서비스 화면
+
+### 입어보는 수고 없이, Look 비교
+
+원본 전신사진과 선택한 옷을 적용한 결과를 나란히 확인하며 여러 코디를 빠르게 비교할 수 있습니다.
+
+![Wearly 원본 사진과 AI 피팅 결과 비교 화면](docs/images/wearly-look-comparison.png)
+
+### 내 옷장
+
+쇼핑몰 URL에서 가져온 실제 상품사진과 정보를 옷장에 저장하고, 코디 추천과 가상 피팅에 바로 활용할 수 있습니다.
+
+![Wearly 실제 상품 기반 내 옷장 화면](docs/images/wearly-closet.png)
+
 ## 포함된 기능
 
 - 상품 URL 붙여넣기 및 클립보드 붙여넣기
