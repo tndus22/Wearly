@@ -17,22 +17,10 @@ export type AvatarClosetItem = {
   background: string;
 };
 
-type Gender = 'woman' | 'man' | 'neutral';
-type Age = 'teen' | '20s' | '30s' | '40plus';
-type FatDistribution = 'upper' | 'balanced' | 'lower';
 type FitSlot = 'top' | 'bottom' | 'dress' | 'outer' | 'shoes';
-type FitMode = 'balanced' | 'quality';
 type FitStatus = 'idle' | 'preparing' | 'generating' | 'done' | 'error';
 type EngineState = 'checking' | 'ready' | 'offline';
 type PoseState = 'idle' | 'detecting' | 'ready' | 'fallback';
-
-type AvatarProfile = {
-  gender: Gender;
-  age: Age;
-  heightCm: number;
-  weightKg: number;
-  fatDistribution: FatDistribution;
-};
 
 type FitSelections = Partial<Record<FitSlot, string | null>>;
 
@@ -41,7 +29,6 @@ type ComparisonLook = {
   image: string;
   label: string;
   itemNames: string[];
-  mode: FitMode;
 };
 
 type AvatarStudioProps = {
@@ -68,37 +55,6 @@ type EngineResponse = {
   free?: boolean;
   engine?: string;
 };
-
-const defaultProfile: AvatarProfile = {
-  gender: 'neutral',
-  age: '20s',
-  heightCm: 165,
-  weightKg: 58,
-  fatDistribution: 'balanced',
-};
-
-const genderOptions: Array<{ value: Gender; label: string }> = [
-  { value: 'woman', label: '여성' },
-  { value: 'man', label: '남성' },
-  { value: 'neutral', label: '선택 안 함' },
-];
-
-const ageOptions: Array<{ value: Age; label: string }> = [
-  { value: 'teen', label: '10대' },
-  { value: '20s', label: '20대' },
-  { value: '30s', label: '30대' },
-  { value: '40plus', label: '40대+' },
-];
-
-const distributionOptions: Array<{
-  value: FatDistribution;
-  label: string;
-  detail: string;
-}> = [
-  { value: 'upper', label: '상체 중심', detail: '복부·팔·가슴 쪽' },
-  { value: 'balanced', label: '균형형', detail: '상·하체가 비슷함' },
-  { value: 'lower', label: '하체 중심', detail: '골반·허벅지 쪽' },
-];
 
 const fitSlots: Array<{ value: FitSlot; label: string }> = [
   { value: 'top', label: '상의' },
@@ -138,17 +94,6 @@ function selectionsForSuggestedItems(items: AvatarClosetItem[]) {
     if (slot === 'top' || slot === 'bottom') next.dress = null;
   }
   return next;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function bodyLabel(bmi: number) {
-  if (bmi < 18.5) return '가벼운 체형';
-  if (bmi < 23) return '보통 체형';
-  if (bmi < 25) return '탄탄한 체형';
-  return '볼륨 체형';
 }
 
 async function compressPersonPhoto(file: File) {
@@ -212,15 +157,11 @@ export default function AvatarStudio({
   occasionLabel,
   recommendationSignal = 0,
 }: AvatarStudioProps) {
-  const [profile, setProfile] = useState<AvatarProfile>(defaultProfile);
-  const [storageReady, setStorageReady] = useState(false);
   const [personImage, setPersonImage] = useState('');
   const [personFileName, setPersonFileName] = useState('');
-  const [bodyGuide, setBodyGuide] = useState<BodyGuide | null>(null);
   const [poseState, setPoseState] = useState<PoseState>('idle');
   const [activeSlot, setActiveSlot] = useState<FitSlot>('top');
   const [selections, setSelections] = useState<FitSelections>({});
-  const [mode, setMode] = useState<FitMode>('balanced');
   const [consent, setConsent] = useState(false);
   const [fitStatus, setFitStatus] = useState<FitStatus>('idle');
   const [fitMessage, setFitMessage] = useState('');
@@ -228,29 +169,9 @@ export default function AvatarStudio({
   const [precisionEngineAvailable, setPrecisionEngineAvailable] = useState(true);
   const [resultImage, setResultImage] = useState('');
   const [resultItemNames, setResultItemNames] = useState<string[]>([]);
+  const [resultEngine, setResultEngine] = useState('');
   const [comparisons, setComparisons] = useState<ComparisonLook[]>([]);
   const consumedRecommendationSignal = useRef(0);
-
-  useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- Restore the non-sensitive fit profile after hydration. */
-    try {
-      const savedProfile = window.localStorage.getItem('wearly-fit-profile');
-      if (savedProfile) {
-        const parsed = JSON.parse(savedProfile) as Partial<AvatarProfile>;
-        setProfile({ ...defaultProfile, ...parsed });
-      }
-    } catch {
-      // Keep defaults if browser storage is unavailable or malformed.
-    } finally {
-      setStorageReady(true);
-    }
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
-
-  useEffect(() => {
-    if (!storageReady) return;
-    window.localStorage.setItem('wearly-fit-profile', JSON.stringify(profile));
-  }, [profile, storageReady]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -285,11 +206,6 @@ export default function AvatarStudio({
     setFitMessage('날씨와 장소에 맞춘 추천 코디를 선택했어요. 조합을 확인해 주세요.');
   }, [recommendationSignal, suggestedItems]);
 
-  const bmi = useMemo(
-    () => profile.weightKg / Math.pow(profile.heightCm / 100, 2),
-    [profile.heightCm, profile.weightKg],
-  );
-
   const realItems = useMemo(
     () => items.filter((item) => Boolean(item.imageUrl) && Boolean(slotForCategory(item.category))),
     [items],
@@ -314,25 +230,20 @@ export default function AvatarStudio({
   );
 
   const generationItemCount = supportedSelectedItems.length || selectedItems.length;
-  const estimatedSeconds = mode === 'quality' ? generationItemCount * 45 : 3;
+  const estimatedSeconds = generationItemCount * 40;
   const canGenerate =
     engineState === 'ready' &&
     Boolean(personImage) &&
-    selectedItems.length > 0 &&
+    supportedSelectedItems.length > 0 &&
     consent &&
     fitStatus !== 'preparing' &&
     fitStatus !== 'generating';
-
-  function updateProfile<Key extends keyof AvatarProfile>(key: Key, value: AvatarProfile[Key]) {
-    setProfile((current) => ({ ...current, [key]: value }));
-  }
 
   async function handlePhotoUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     setFitStatus('preparing');
     setPoseState('detecting');
-    setBodyGuide(null);
     setFitMessage('전신사진을 안전한 크기로 준비하고 있어요.');
 
     try {
@@ -341,8 +252,9 @@ export default function AvatarStudio({
       setPersonFileName(file.name);
       setResultImage('');
       setResultItemNames([]);
+      setResultEngine('');
       setComparisons([]);
-      setFitMessage('사진에서 어깨·허리·무릎·발목 위치를 찾고 있어요.');
+      setFitMessage('사진에서 사람 실루엣과 어깨·허리·무릎·발목 위치를 찾고 있어요.');
 
       let detectedGuide: BodyGuide | null = null;
       try {
@@ -352,12 +264,11 @@ export default function AvatarStudio({
         // A silhouette-based server fallback still aligns the clothes if pose detection is unavailable.
       }
 
-      setBodyGuide(detectedGuide);
       setPoseState(detectedGuide ? 'ready' : 'fallback');
       setFitStatus('idle');
       setFitMessage(
         detectedGuide
-          ? '몸 기준점을 찾았어요. 선택한 옷을 어깨·허리·다리 비율에 맞춰 적용해요.'
+          ? '사람 실루엣을 찾았어요. 기존 옷 영역을 먼저 지운 뒤 상의·하의를 각각 교체해요.'
           : '몸 기준점을 일부 찾지 못해 사진 속 사람 윤곽을 기준으로 크기를 자동 조정해요.',
       );
     } catch (error) {
@@ -372,10 +283,10 @@ export default function AvatarStudio({
   function removePersonPhoto() {
     setPersonImage('');
     setPersonFileName('');
-    setBodyGuide(null);
     setPoseState('idle');
     setResultImage('');
     setResultItemNames([]);
+    setResultEngine('');
     setComparisons([]);
     setConsent(false);
     setFitStatus('idle');
@@ -428,6 +339,11 @@ export default function AvatarStudio({
       setFitMessage('실제 상품사진이 있는 옷을 한 개 이상 골라 주세요.');
       return;
     }
+    if (!supportedSelectedItems.length) {
+      setFitStatus('error');
+      setFitMessage('신발과 함께 입혀볼 상의·하의·아우터·원피스를 하나 이상 골라 주세요.');
+      return;
+    }
     if (!consent) {
       setFitStatus('error');
       setFitMessage('사진 사용 동의를 확인해 주세요.');
@@ -435,12 +351,13 @@ export default function AvatarStudio({
     }
 
     setFitStatus('generating');
+    setResultImage('');
+    setResultItemNames([]);
+    setResultEngine('');
     setFitMessage(
-      mode === 'quality'
-        ? '선택한 ' +
-            generationItemCount +
-            '개 상품을 무료 정밀 AI 대기열에서 합성하고 있어요. 이 창을 닫지 말아 주세요.'
-        : '실제 상품사진의 배경을 제거해 빠른 비교 미리보기를 만들고 있어요.',
+      '선택한 ' +
+        generationItemCount +
+        '개 상품의 기존 옷을 지우고 정밀 생성하고 있어요. 이 창을 닫지 말아 주세요.',
     );
 
     try {
@@ -456,13 +373,6 @@ export default function AvatarStudio({
             imageUrl: item.imageUrl,
             sourceUrl: item.sourceUrl,
           })),
-          mode,
-          profile: {
-            heightCm: profile.heightCm,
-            weightKg: profile.weightKg,
-            fatDistribution: profile.fatDistribution,
-          },
-          bodyGuide,
         }),
       });
       const data = (await response.json()) as TryOnResponse;
@@ -479,11 +389,11 @@ export default function AvatarStudio({
         image: data.resultImage,
         label: 'LOOK ' + (comparisons.length + 1),
         itemNames,
-        mode,
       };
 
       setResultImage(data.resultImage);
       setResultItemNames(itemNames);
+      setResultEngine(data.engine ?? 'Wearly');
       setComparisons((current) => [look, ...current].slice(0, 3));
       setFitStatus('done');
       setFitMessage(
@@ -491,7 +401,7 @@ export default function AvatarStudio({
           ? data.notice
           : data.skippedItems?.length
           ? '무료 실사 피팅이 완성됐어요. 신발은 지원 대상이 아니라 코디 선택에만 남겨 두었어요.'
-          : '무료 실사 피팅이 완성됐어요. 다른 옷을 선택해 바로 다음 룩과 비교할 수 있어요.',
+          : '생성형 실사 피팅이 완성됐어요. 다른 옷을 선택해 바로 다음 룩과 비교할 수 있어요.',
       );
     } catch (error) {
       setFitStatus('error');
@@ -509,28 +419,28 @@ export default function AvatarStudio({
     <section className="avatar-section virtual-fit-section" id="avatar" aria-labelledby="avatar-heading">
       <div className="section-heading avatar-section-heading">
         <div>
-          <p className="eyebrow">PHOTOREAL VIRTUAL FITTING</p>
-          <h2 id="avatar-heading">입어보지 않고, 실제 나에게 먼저.</h2>
+          <p className="eyebrow">WEARLY FITTING STUDIO</p>
+          <h2 id="avatar-heading">내사진에 진짜처럼 입혀보기</h2>
           <p>
-            내 전신사진을 기준으로 옷장 속 실제 상품을 합성하고, 여러 코디를 나란히 비교해요.
+            사진 속 체형은 그대로 두고 기존 옷만 지운 뒤, 선택한 상품을 새로 생성해요.
           </p>
         </div>
-        <span className="feature-pill">FREE · REAL TRY-ON</span>
+        <span className="feature-pill">정밀 실사 생성</span>
       </div>
 
       <ol className="fit-flow" aria-label="가상 피팅 순서">
-        <li><b>01</b><span>내 전신사진과 체형 입력</span></li>
-        <li><b>02</b><span>상의·하의·신발 조합</span></li>
-        <li><b>03</b><span>실사 생성 후 Look 비교</span></li>
+        <li><b>1</b><span>정면 전신사진 올리기</span></li>
+        <li><b>2</b><span>입혀볼 실제 상품 고르기</span></li>
+        <li><b>3</b><span>AI 피팅 결과 비교하기</span></li>
       </ol>
 
       <div className="virtual-fit-grid">
-        <aside className="fit-panel fit-profile-panel" aria-label="내 사진과 체형 정보">
+        <aside className="fit-panel fit-profile-panel" aria-label="내 전신사진">
           <div className="fit-panel-heading">
             <span>01</span>
             <div>
-              <strong>가상의 나 만들기</strong>
-              <p>캐릭터가 아닌 실제 전신사진을 기준으로 해요.</p>
+              <strong>내 사진</strong>
+              <p>키·몸무게 대신 사진 속 실제 체형을 그대로 사용해요.</p>
             </div>
           </div>
 
@@ -583,107 +493,17 @@ export default function AvatarStudio({
                   {poseState === 'detecting'
                     ? '몸 비율 분석 중'
                     : poseState === 'ready'
-                      ? '몸맞춤 기준점 감지 완료'
+                      ? '사람·의상 교체 영역 감지 완료'
                       : '사람 윤곽 기준 자동 맞춤'}
                 </strong>
                 <small>
                   {poseState === 'ready'
-                    ? '어깨·골반·무릎·발목 좌표로 옷 크기를 계산해요.'
+                    ? '사람 마스크와 어깨·골반·발목 좌표로 기존 옷을 지우고 새 옷을 맞춰요.'
                     : '배경 여백과 사람 크기를 분석해 옷 위치를 보정해요.'}
                 </small>
               </div>
             </div>
           )}
-
-          <div className="measurement-grid">
-            <label>
-              <span>키</span>
-              <div>
-                <input
-                  type="number"
-                  min="130"
-                  max="210"
-                  value={profile.heightCm}
-                  onChange={(event) =>
-                    updateProfile('heightCm', clamp(Number(event.target.value), 130, 210))
-                  }
-                />
-                <b>cm</b>
-              </div>
-            </label>
-            <label>
-              <span>몸무게</span>
-              <div>
-                <input
-                  type="number"
-                  min="35"
-                  max="180"
-                  value={profile.weightKg}
-                  onChange={(event) =>
-                    updateProfile('weightKg', clamp(Number(event.target.value), 35, 180))
-                  }
-                />
-                <b>kg</b>
-              </div>
-            </label>
-          </div>
-
-          <div className="fit-profile-summary">
-            <span>BMI {bmi.toFixed(1)}</span>
-            <strong>{bodyLabel(bmi)}</strong>
-            <small>수치로 몸을 바꾸지 않고 사진 속 실제 비율을 우선해요.</small>
-          </div>
-
-          <fieldset className="compact-fieldset">
-            <legend>살이 붙는 위치</legend>
-            <div className="distribution-options">
-              {distributionOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={profile.fatDistribution === option.value ? 'is-active' : ''}
-                  onClick={() => updateProfile('fatDistribution', option.value)}
-                  aria-pressed={profile.fatDistribution === option.value}
-                >
-                  <strong>{option.label}</strong>
-                  <span>{option.detail}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="demographic-controls">
-            <fieldset>
-              <legend>성별</legend>
-              <div>
-                {genderOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={profile.gender === option.value ? 'is-active' : ''}
-                    onClick={() => updateProfile('gender', option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <fieldset>
-              <legend>연령대</legend>
-              <div>
-                {ageOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={profile.age === option.value ? 'is-active' : ''}
-                    onClick={() => updateProfile('age', option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          </div>
         </aside>
 
         <section className="fit-panel fit-closet-panel" aria-label="실제 상품 조합 선택">
@@ -785,13 +605,13 @@ export default function AvatarStudio({
               <span aria-hidden="true">URL</span>
               <strong>{fitSlots.find((slot) => slot.value === activeSlot)?.label} 상품사진이 없어요.</strong>
               <p>위의 상품 링크 가져오기에서 실제 상품 URL을 추가하면 바로 선택할 수 있어요.</p>
-              <a href="#top">상품 URL 추가하러 가기</a>
+              <a href="#add-item">상품 URL 추가하러 가기</a>
             </div>
           )}
 
           <p className="product-photo-tip">
             정면으로 펼쳐진 선명한 상품사진일수록 로고·패턴·소재 디테일이 더 잘 유지돼요.
-            <span>정밀 CatVTON은 의류를 합성하고, 신발은 실제 상품사진 즉시 미리보기 방식으로 함께 적용해요.</span>
+            <span>모델 착용컷과 단독 상품컷을 자동 구분해요. 현재 생성 대상은 상의·하의·아우터·원피스예요.</span>
           </p>
         </section>
 
@@ -799,8 +619,8 @@ export default function AvatarStudio({
           <div className="fit-panel-heading fit-result-heading">
             <span>03</span>
             <div>
-              <strong>실사 피팅 결과</strong>
-              <p>원래 얼굴과 체형을 유지한 채 옷만 바꿔요.</p>
+              <strong>AI 피팅 결과</strong>
+              <p>원래 얼굴과 체형은 유지하고 선택한 옷만 바꿔요.</p>
             </div>
           </div>
 
@@ -810,17 +630,17 @@ export default function AvatarStudio({
               <strong>
                 {engineState === 'ready'
                   ? precisionEngineAvailable
-                    ? '무료 정밀 AI + 즉시 미리보기 준비됨'
-                    : '무료 즉시 미리보기 준비됨'
+                    ? '정밀 피팅 준비 완료'
+                    : 'AI 피팅 준비 중'
                     : engineState === 'offline'
                       ? '웹 서버 연결 끊김'
-                      : '실사 AI 엔진 확인 중'}
+                      : '피팅 준비 상태 확인 중'}
               </strong>
               <p>
                 {engineState === 'ready'
                   ? precisionEngineAvailable
-                    ? '먼저 CatVTON ZeroGPU를 사용하고, 무료 한도가 차면 실제 상품사진 즉시 미리보기로 자동 전환해요.'
-                    : '공개 정밀 AI가 쉬는 동안 실제 상품사진을 배경 제거해 전신사진에 바로 배치해요.'
+                    ? '기존 옷을 지우고 한 번의 정밀 생성으로 새 옷을 입혀요.'
+                    : '첫 생성은 AI 준비 때문에 조금 더 오래 걸릴 수 있어요.'
                     : engineState === 'offline'
                       ? '로컬 서버를 실행한 뒤 이 페이지를 새로고침해 주세요.'
                       : '잠시만 기다려 주세요.'}
@@ -862,57 +682,30 @@ export default function AvatarStudio({
             {fitStatus === 'generating' && (
               <div className="fit-generating-overlay" role="status">
                 <span className="fit-spinner" />
-                <strong>{mode === 'quality' ? '정밀 AI가 실제 옷을 입히는 중' : '빠른 미리보기 만드는 중'}</strong>
-                <p>
-                  {mode === 'quality'
-                    ? '옷의 디테일과 몸에 따른 주름·가림을 계산하고 있어요.'
-                    : '어깨·허리·다리 기준으로 실제 상품사진 크기를 맞추고 있어요.'}
-                </p>
+                <strong>AI가 실제 옷을 입히는 중</strong>
+                <p>기존 옷을 지우고 허리선·다리 윤곽·주름과 가림을 새로 만들고 있어요.</p>
               </div>
             )}
           </div>
 
           {resultImage && (
             <div className="result-actions">
-              <span>{resultItemNames.length}개 상품 적용 완료</span>
+              <span>
+                {resultItemNames.length}개 상품 적용 완료
+                {resultEngine ? ' · ' + resultEngine : ''}
+              </span>
               <a href={resultImage} download="wearly-virtual-fit.jpg">결과 저장</a>
             </div>
           )}
 
-          <fieldset className="fit-mode-control">
-            <legend>생성 모드</legend>
-            <div>
-              <button
-                type="button"
-                className={mode === 'balanced' ? 'is-active' : ''}
-                onClick={() => setMode('balanced')}
-              >
-                <strong>빠른 비교 · 무제한</strong>
-                <span>몸 좌표 맞춤 · 실제 상품사진</span>
-              </button>
-              <button
-                type="button"
-                className={mode === 'quality' ? 'is-active' : ''}
-                onClick={() => setMode('quality')}
-              >
-                <strong>정밀 AI · 무료</strong>
-                <span>CatVTON 주름·가림 생성</span>
-              </button>
-            </div>
-          </fieldset>
-
           <div className="fit-time-estimate">
-            <span>예상 대기</span>
+            <span>정밀 실사 생성</span>
             <strong>
               {generationItemCount
                 ? '약 ' + estimatedSeconds + '초 전후'
                 : '상품 선택 후 계산'}
             </strong>
-            <small>
-              {mode === 'quality'
-                ? '공용 무료 GPU의 대기열과 상품 수에 따라 더 오래 걸릴 수 있어요.'
-                : '공용 GPU 한도를 사용하지 않아 여러 코디를 빠르게 비교할 수 있어요.'}
-            </small>
+            <small>기존 옷을 지운 뒤 새로 생성하며, 공개 GPU 대기열에 따라 더 오래 걸릴 수 있어요.</small>
           </div>
 
           <label className="photo-consent">
@@ -922,7 +715,7 @@ export default function AvatarStudio({
               onChange={(event) => setConsent(event.target.checked)}
             />
             <span>
-              본인 또는 사용 동의를 받은 사진이며, 외부 AI 처리에 동의해요.
+              본인 또는 사용 동의를 받은 사진이며, 실루엣 분석과 외부 AI 처리에 동의해요.
             </span>
           </label>
 
@@ -939,9 +732,9 @@ export default function AvatarStudio({
                 : engineState === 'offline'
                     ? '서버 연결 후 사용할 수 있어요'
                     : selectedItems.length
-                        ? mode === 'quality'
-                          ? selectedItems.length + '개 상품 정밀 AI 피팅'
-                          : selectedItems.length + '개 상품 빠른 미리보기'
+                        ? supportedSelectedItems.length
+                          ? supportedSelectedItems.length + '개 옷 정밀 실사 피팅 시작'
+                          : '상의·하의·원피스를 선택해 주세요'
                         : '입혀볼 상품을 선택해 주세요'}
           </button>
 
@@ -953,7 +746,7 @@ export default function AvatarStudio({
               {fitMessage}
             </p>
           )}
-          <p className="credit-note">API 키 없음 · 결제 크레딧 없음 · 공용 무료 사용량 제한 있음</p>
+          <p className="credit-note">무료 데모 · API 키 불필요 · 생성에 실패하면 원본 사진을 유지해요.</p>
         </section>
       </div>
 
@@ -961,7 +754,7 @@ export default function AvatarStudio({
         <div className="comparison-heading">
           <div>
             <p className="eyebrow">QUICK COMPARISON</p>
-            <h3 id="comparison-heading">입어보는 수고 없이, Look A/B/C 비교</h3>
+            <h3 id="comparison-heading">입어보는 수고 없이, Look 비교</h3>
           </div>
           <p>새 조합을 생성할 때마다 최근 3개 룩이 자동으로 남아요.</p>
         </div>
@@ -1032,9 +825,13 @@ export default function AvatarStudio({
         <strong>사진 처리 원칙</strong>
         <p>
           몸 기준점 분석은 MediaPipe로 브라우저 안에서 처리하고, 전신사진과 생성 결과는 옷장
-          localStorage에 저장하지 않아요. 생성할 때만 이 사이트의 서버로 전송되고, 정밀 AI를
-          선택했을 때만 Hugging Face의 공개 CatVTON 엔진으로 전달됩니다. 결과는 현재 화면에서만
-          비교합니다.{' '}
+          localStorage에 저장하지 않아요. 생성할 때만 이 사이트의 서버와 Hugging Face의 공개
+          FASHN VTON 엔진으로 전달되며, 실패하면 CatVTON을 보조로 사용합니다. 결과는 현재
+          화면에서만 비교합니다.{' '}
+          <a href="https://huggingface.co/fashn-ai/fashn-vton-1.5" target="_blank" rel="noreferrer">
+            FASHN VTON 1.5 · Apache 2.0
+          </a>
+          {' · '}
           <a href="https://github.com/Zheng-Chong/CatVTON" target="_blank" rel="noreferrer">
             CatVTON · CC BY-NC-SA 4.0 · 비상업용
           </a>

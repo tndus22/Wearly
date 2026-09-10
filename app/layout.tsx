@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Wearly | 공유 한 번으로 완성되는 AI 옷장',
+  title: 'Wearly | 내 사진으로 미리 입어보는 AI 옷장',
   description:
-    '쇼핑몰 상품 URL을 공유하면 구매한 옷을 자동으로 정리하고 날씨와 일정에 맞는 코디를 추천하는 AI 옷장',
+    '상품 URL을 내 옷장에 저장하고 전신사진에 실제 옷을 입혀보며 날씨와 장소별 코디를 비교하는 AI 가상 피팅 서비스',
 };
 
 export default function RootLayout({

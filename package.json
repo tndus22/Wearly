@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ignore-pattern .next --ignore-pattern dist --ignore-pattern .vinext"
+    "lint": "eslint . --ignore-pattern .next --ignore-pattern .vercel --ignore-pattern dist --ignore-pattern .vinext --ignore-pattern public/mediapipe"
   },
   "dependencies": {
     "@gradio/client": "^2.5.1",

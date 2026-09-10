@@ -518,9 +518,10 @@ export default function Home() {
           <span>Wearly</span>
         </a>
         <nav className="main-nav" aria-label="주요 메뉴">
+          <a href="#service">서비스 소개</a>
+          <a href="#avatar">AI 피팅</a>
           <a href="#closet">내 옷장</a>
-          <a href="#styling">날씨 코디</a>
-          <a href="#avatar">실사 피팅</a>
+          <a href="#styling">오늘 코디</a>
         </nav>
         <div
           className={weatherLoading ? 'weather-pill is-loading' : 'weather-pill'}
@@ -543,32 +544,34 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="hero">
+      <section className="hero" id="service" aria-labelledby="service-heading">
         <div className="hero-copy">
-          <p className="eyebrow">AI CLOSET ASSISTANT</p>
-          <h1>
-            산 옷은 바로,
-            <br />내 옷장으로.
+          <p className="eyebrow">AI VIRTUAL CLOSET</p>
+          <h1 id="service-heading">
+            <span className="hero-kicker-line">직접 입어보지 말고,</span>
+            <em>내 사진에 먼저</em>
+            <span>입혀보세요.</span>
           </h1>
           <p className="hero-description">
-            쇼핑몰 상품 URL을 공유하면 옷의 색상과 스타일을 자동으로 읽고,
-            내 전신사진에 실제 상품을 입혀본 뒤 여러 코디를 빠르게 비교해요.
+            <strong>Wearly는 AI 가상 피팅과 맞춤 코디 서비스예요.</strong>
+            쇼핑몰 상품 링크를 내 옷장에 저장하고, 전신사진 속 기존 옷을 선택한
+            상품으로 바꿔 여러 코디를 한눈에 비교할 수 있어요.
+            <span>오늘 날씨와 가는 장소에 맞는 코디도 내 옷장에서 자동으로 추천해요.</span>
           </p>
-          <div className="hero-points" aria-label="서비스 장점">
-            <span>계정 연동 없음</span>
-            <span>공유 한 번</span>
-            <span>실사 AI 피팅</span>
-            <span>날씨·장소 자동 추천</span>
-          </div>
+          <ol className="hero-how-to" aria-label="Wearly 이용 방법">
+            <li><span>01</span><strong>상품 링크 추가</strong><small>쇼핑몰 URL을 붙여넣어요.</small></li>
+            <li><span>02</span><strong>내 사진과 옷 선택</strong><small>정면 전신사진과 상품을 골라요.</small></li>
+            <li><span>03</span><strong>피팅·추천 비교</strong><small>AI 피팅과 날씨 코디를 비교해요.</small></li>
+          </ol>
         </div>
 
-        <div className="import-panel">
+        <div className="import-panel" id="add-item">
           <div className="panel-heading">
             <div>
-              <span className="step-label">STEP 01</span>
-              <h2>상품 링크 가져오기</h2>
+              <span className="step-label">START HERE</span>
+              <h2>상품 URL로 옷 추가</h2>
             </div>
-            <span className="privacy-label">로그인 불필요</span>
+            <span className="privacy-label">로그인 없이</span>
           </div>
 
           <form className="url-form" onSubmit={handleImport}>
@@ -589,7 +592,7 @@ export default function Home() {
                 {loading ? '읽는 중…' : '불러오기'}
               </button>
             </div>
-            <p id="url-help">공개 상품 페이지를 지원해요. 빈칸으로 누르면 샘플을 체험할 수 있어요.</p>
+            <p id="url-help">공개 상품 페이지 URL을 지원해요. 빈칸으로 불러오면 샘플을 체험할 수 있어요.</p>
           </form>
 
           <div className="import-stage" aria-live="polite">
@@ -637,16 +640,25 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <ol className="import-steps">
-                <li><span>1</span> 상품 링크 붙여넣기</li>
-                <li><span>2</span> 정보 자동 태깅</li>
-                <li><span>3</span> 옷장과 코디에 반영</li>
-              </ol>
+              <div className="import-empty">
+                <span aria-hidden="true">URL</span>
+                <div>
+                  <strong>링크 하나로 실제 상품사진을 가져와요.</strong>
+                  <p>추가한 옷은 AI 피팅과 오늘의 코디에 바로 반영돼요.</p>
+                </div>
+              </div>
             )}
           </div>
           {message && <p className="status-message" role="status">{message}</p>}
         </div>
       </section>
+
+      <AvatarStudio
+        items={closet}
+        suggestedItems={recommendation.items}
+        occasionLabel={selectedSituation.label}
+        recommendationSignal={recommendationSignal}
+      />
 
       <section className="closet-section" id="closet" aria-labelledby="closet-heading">
         <div className="section-heading">
@@ -868,17 +880,10 @@ export default function Home() {
         </article>
       </section>
 
-      <AvatarStudio
-        items={closet}
-        suggestedItems={recommendation.items}
-        occasionLabel={selectedSituation.label}
-        recommendationSignal={recommendationSignal}
-      />
-
       <footer>
         <a className="brand" href="#top"><span className="brand-mark">W</span>Wearly</a>
-        <p>공유 한 번으로 완성되는 나만의 AI 옷장과 실사 가상 피팅.</p>
-        <span>2-day MVP · 2026</span>
+        <p>상품 링크부터 실사 피팅과 오늘의 코디까지, 한곳에서.</p>
+        <span>© 2026 Wearly</span>
       </footer>
     </main>
   );
